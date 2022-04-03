@@ -101,7 +101,6 @@ HANDLE CreateFileW_S(LPCWSTR lpFileName, DWORD dwDesiredAccess, DWORD dwShareMod
     if (!checked_hooking && std::wstring(lpFileName).find(L"maindata/file.db") != std::string::npos) {
         checked_hooking = true;
 
-        std::call_once(hooking_once_flag, []() { events.DoHooking(); });
     }
     return CreateFileW(lpFileName, dwDesiredAccess, dwShareMode, lpSecurityAttributes,
                        dwCreationDisposition, dwFlagsAndAttributes, hTemplateFile);
@@ -130,6 +129,14 @@ FARPROC GetProcAddress_S(HMODULE hModule, LPCSTR lpProcName)
     std::call_once(hooking_once_flag, []() { events.DoHooking(); });
 
     if ((uintptr_t)lpProcName > 0x1000) {
+        spdlog::debug("GetProcAddress {}", lpProcName);
+        if (lpProcName == std::string("IsValidLocaleName")) {
+                std::call_once(hooking_once_flag, []() {
+        spdlog::info("GetProcAddress hook once trigger");
+        EnableExtenalFileLoading(events);
+      events.DoHooking();
+           });
+        }
         if (lpProcName == std::string("CreateFileW")) {
             return (FARPROC)CreateFileW_S;
         }
@@ -137,7 +144,6 @@ FARPROC GetProcAddress_S(HMODULE hModule, LPCSTR lpProcName)
             // 
             return (FARPROC)CreateWindowExW_S;
         }
-        spdlog::debug("GetProcAddress {}", lpProcName);
         auto procs = events.GetProcAddress(lpProcName);
         for (auto& proc : procs) {
             if (proc > 0) {
@@ -297,25 +303,15 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                 DWORD   process_name_size  = 1024;
                 QueryFullProcessImageNameW(parent_handle, 0, process_name, &process_name_size);
                 std::filesystem::path process_file_path(process_name);
-
-                if (_wcsicmp(process_file_path.filename().wstring().c_str(),
-                                L"Anno1800_plus.exe")
-                           != 0
-                    && _wcsicmp(process_file_path.filename().wstring().c_str(),
-                                L"Anno1800.exe")
-                           != 0) {
-                    return TRUE;
-                }
             }
+
+            AllocConsole();
 
 #if defined(INTERNAL_ENABLED)
             EnableDebugging(events);
 #endif
 
-            std::wstring command_line(GetCommandLineW());
-            if (command_line.find(L"gamelauncher_wait_handle") != std::wstring::npos) {
-                return TRUE;
-            }
+        
 
             {
                 wchar_t process_name[1024] = {0};
@@ -334,7 +330,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
             }
 
             events.DoHooking.connect([]() {
-                CheckVersion();
+                // CheckVersion();
 
                 // Let's start loading the list of files we want to have
                 HMODULE module;
@@ -376,7 +372,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                 }
             });
 
-            EnableExtenalFileLoading(events);
+            // EnableExtenalFileLoading(events);
             // TODO(alexander): Add code that can load other dll libraries here
             // that offer more features later on
             set_import("GetProcAddress", (uintptr_t)GetProcAddress_S);
