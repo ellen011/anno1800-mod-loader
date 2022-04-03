@@ -299,12 +299,6 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
                 std::filesystem::path process_file_path(process_name);
 
                 if (_wcsicmp(process_file_path.filename().wstring().c_str(),
-                             L"UbisoftGameLauncher.exe")
-                        != 0
-                    && _wcsicmp(process_file_path.filename().wstring().c_str(),
-                                L"UbisoftGameLauncher64.exe")
-                           != 0
-                    && _wcsicmp(process_file_path.filename().wstring().c_str(),
                                 L"Anno1800_plus.exe")
                            != 0
                     && _wcsicmp(process_file_path.filename().wstring().c_str(),
@@ -319,8 +313,7 @@ BOOL APIENTRY DllMain(HMODULE hModule, DWORD ul_reason_for_call, LPVOID lpReserv
 #endif
 
             std::wstring command_line(GetCommandLineW());
-            if (command_line.find(L"gamelauncher_wait_handle") != std::wstring::npos
-                && command_line.find(L"upc_uplay_id") != std::wstring::npos) {
+            if (command_line.find(L"gamelauncher_wait_handle") != std::wstring::npos) {
                 return TRUE;
             }
 
